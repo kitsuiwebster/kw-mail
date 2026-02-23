@@ -17,7 +17,7 @@ install:
 
 run:
 	@echo "🚀 Démarrage du serveur..."
-	uvicorn app.main:app --host 0.0.0.0 --port 8000
+	. .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 dev:
 	@echo "🚀 Démarrage du serveur en mode dev (auto-reload)..."
