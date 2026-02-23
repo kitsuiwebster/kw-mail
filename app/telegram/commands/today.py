@@ -12,7 +12,7 @@ async def handle_today(chat_id: str, telegram_client: TelegramClient, last_searc
     try:
         start_ts = time.time()
         print(f"[today] start chat_id={chat_id} ts={start_ts:.3f}")
-        telegram_client.send_message("Chargement...", chat_id)
+        telegram_client.send_message("🌀 Chargement...", chat_id)
         sent_ts = time.time()
         print(f"[today] sent_loading chat_id={chat_id} dt={sent_ts - start_ts:.3f}s")
 

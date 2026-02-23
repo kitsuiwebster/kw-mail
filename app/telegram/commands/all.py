@@ -16,7 +16,7 @@ async def handle_all(command: str, chat_id: str, telegram_client: TelegramClient
             except ValueError:
                 days = 1
 
-        telegram_client.send_message("Chargement...", chat_id)
+        telegram_client.send_message("⚡️ Chargement...", chat_id)
 
         imap_client = IMAPClient()
         imap_client.connect()

@@ -7,7 +7,7 @@ from app.utils import remove_markdown
 async def handle_summary(chat_id: str, telegram_client: TelegramClient, mistral_client: MistralClient):
     # Handle /summary command - AI summary of emails
     try:
-        telegram_client.send_message("Chargement...", chat_id)
+        telegram_client.send_message("🔥 Chargement...", chat_id)
 
         imap_client = IMAPClient()
         imap_client.connect()
