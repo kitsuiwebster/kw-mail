@@ -5,16 +5,16 @@ Telegram bot for email management via IMAP with AI.
 ## Quick Start
 
 ```bash
-make install  # Install dependencies
-make dev      # Run server (auto-reload)
+make install  # Build Docker image
+make run      # Run container
 ```
 
 ## Commands
 
 ```bash
-make install  # Install dependencies
-make run      # Start server
-make dev      # Start server (dev mode)
-make test     # Test IMAP connection
+make install  # Build Docker image
+make run      # Start container
+make dev      # Start container (rebuild)
+make test     # Test IMAP connection (in container)
 make clean    # Clean temp files
 ```

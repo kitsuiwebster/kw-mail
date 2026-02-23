@@ -52,7 +52,7 @@ async def handle_query(
                 telegram_client.send_message("\n".join(lines), chat_id)
                 return
 
-        telegram_client.send_message("⏳ Traitement de votre question...", chat_id)
+        telegram_client.send_message("Chargement...", chat_id)
 
         if chat_id not in conversation_history:
             conversation_history[chat_id] = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -155,9 +155,11 @@ async def handle_query(
 
         conversation_history[chat_id].append({"role": "assistant", "content": response})
 
-        if len(conversation_history[chat_id]) > 11:
+        # Reset after 10 full exchanges (user+assistant). System + 20 messages.
+        max_messages = 21
+        if len(conversation_history[chat_id]) > max_messages:
             telegram_client.send_message("ℹ️ Mémoire réinitialisée (limite atteinte)", chat_id)
-            conversation_history[chat_id] = [conversation_history[chat_id][0]] + conversation_history[chat_id][-10:]
+            conversation_history[chat_id] = [conversation_history[chat_id][0]]
 
         if not list_tool_used["used"]:
             telegram_client.send_message(clean_response, chat_id)

@@ -1,37 +1,48 @@
-.PHONY: help install run dev test clean stop
+.PHONY: help run build rebuild test clean stop logs restart
 
 help:
 	@echo "📧 KW Email Reader - Makefile"
 	@echo ""
 	@echo "Commandes disponibles:"
-	@echo "  make install    - Installer les dépendances"
-	@echo "  make run        - Lancer le serveur"
-	@echo "  make dev        - Lancer le serveur en mode dev (auto-reload)"
+	@echo "  make run        - Lancer le container (compose)"
+	@echo "  make build      - Build l'image Docker"
+	@echo "  make rebuild    - Build Docker sans cache"
 	@echo "  make test       - Tester la connexion IMAP"
 	@echo "  make clean      - Nettoyer les fichiers temporaires"
-	@echo "  make stop       - Stopper les processus uvicorn du projet"
-
-install:
-	@echo "📦 Installation des dépendances..."
-	pip install -r requirements.txt
-	@echo "✅ Dépendances installées"
+	@echo "  make stop       - Arrêter le container (compose)"
+	@echo "  make logs       - Logs du container (compose)"
+	@echo "  make restart    - Redémarrer le container (compose)"
 
 run:
-	@echo "🚀 Démarrage du serveur..."
-	. .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000
+	@echo "🐳 Lancement Docker..."
+	docker compose up -d
 
-dev:
-	@echo "🚀 Démarrage du serveur en mode dev (auto-reload)..."
-	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+build:
+	@echo "🐳 Build Docker..."
+	docker compose up -d --build --force-recreate
+	@echo "✅ Container recréé"
+
+rebuild:
+	@echo "🐳 Build Docker (no cache)..."
+	docker compose build --no-cache
+	docker compose up -d --build --force-recreate
+	@echo "✅ Container recréé"
 
 stop:
-	@echo "🛑 Arrêt des processus uvicorn..."
-	@pkill -f "uvicorn app.main:app" || true
-	@echo "✅ Uvicorn stoppé (si présent)"
+	@echo "🐳 Arrêt Docker..."
+	docker compose down
+
+logs:
+	@echo "🐳 Logs Docker..."
+	docker logs -f kw-mail
+
+restart:
+	@echo "🐳 Redémarrage Docker..."
+	docker compose restart
 
 test:
 	@echo "🔍 Test de la connexion IMAP..."
-	python3 -c "from app.email.imap_client import IMAPClient; from dotenv import load_dotenv; load_dotenv(); c = IMAPClient(); c.connect(); emails = c.get_emails_last_24h(); print(f'✅ {len(emails)} emails trouvés'); c.disconnect()"
+	docker compose run --rm kw-mail python3 -c "from app.email.imap_client import IMAPClient; from dotenv import load_dotenv; load_dotenv(); c = IMAPClient(); c.connect(); emails = c.get_emails_last_24h(); print(f'✅ {len(emails)} emails trouvés'); c.disconnect()"
 
 clean:
 	@echo "🧹 Nettoyage..."
