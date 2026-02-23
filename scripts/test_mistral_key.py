@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Quick test to validate Mistral API key"""
+# Quick test to validate Mistral API key.
 
-import httpx
 import os
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+import httpx
 from dotenv import load_dotenv
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 load_dotenv()
 
@@ -17,13 +19,13 @@ print()
 
 headers = {
     "Authorization": f"Bearer {api_key}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
 
 payload = {
     "model": "mistral-large-latest",
     "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 10
+    "max_tokens": 10,
 }
 
 try:
@@ -32,7 +34,7 @@ try:
             "https://api.mistral.ai/v1/chat/completions",
             json=payload,
             headers=headers,
-            timeout=10.0
+            timeout=10.0,
         )
 
         print(f"Status: {response.status_code}")

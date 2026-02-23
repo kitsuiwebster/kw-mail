@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""
-Script to get your Telegram Chat ID
-"""
+# Script to get your Telegram Chat ID.
 
+import json
 import os
 import sys
+import urllib.request
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,9 +22,9 @@ if not token or token == "your-telegram-bot-token":
     print("   TELEGRAM_BOT_TOKEN=your-token-here")
     sys.exit(1)
 
-print("="*80)
+print("=" * 80)
 print("GETTING YOUR TELEGRAM CHAT ID")
-print("="*80)
+print("=" * 80)
 print()
 print("Instructions:")
 print("1. Open Telegram")
@@ -33,9 +34,6 @@ print("4. Then press ENTER here...")
 input()
 
 print("Fetching updates...")
-
-import urllib.request
-import json
 
 url = f"https://api.telegram.org/bot{token}/getUpdates"
 
@@ -48,7 +46,6 @@ try:
         print("  Make sure you sent a message to your bot first!")
         sys.exit(1)
 
-    # Get the most recent message
     last_update = data["result"][-1]
     chat_id = last_update["message"]["chat"]["id"]
     username = last_update["message"]["chat"].get("username", "N/A")
@@ -68,4 +65,3 @@ except Exception as e:
     print("Troubleshooting:")
     print("- Check that your TELEGRAM_BOT_TOKEN is correct")
     print("- Make sure you sent a message to your bot")
-

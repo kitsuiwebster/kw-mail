@@ -25,7 +25,7 @@ dev:
 
 test:
 	@echo "🔍 Test de la connexion IMAP..."
-	python3 -c "from app.imap_client import IMAPClient; from dotenv import load_dotenv; load_dotenv(); c = IMAPClient(); c.connect(); emails = c.get_emails_last_24h(); print(f'✅ {len(emails)} emails trouvés'); c.disconnect()"
+	python3 -c "from app.email.imap_client import IMAPClient; from dotenv import load_dotenv; load_dotenv(); c = IMAPClient(); c.connect(); emails = c.get_emails_last_24h(); print(f'✅ {len(emails)} emails trouvés'); c.disconnect()"
 
 clean:
 	@echo "🧹 Nettoyage..."

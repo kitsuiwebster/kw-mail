@@ -1,9 +1,9 @@
-import imaplib
 import email
-from email.header import decode_header
-from datetime import datetime, timedelta
-from typing import List, Dict
+import imaplib
 import os
+from datetime import datetime, timedelta
+from email.header import decode_header
+from typing import Dict, List
 
 
 class IMAPClient:
@@ -15,7 +15,7 @@ class IMAPClient:
         self.connection = None
 
     def connect(self):
-        """Connect to IMAP server (Proton Bridge)."""
+        # Connect to IMAP server (Proton Bridge)
         try:
             self.connection = imaplib.IMAP4(self.host, self.port)
             self.connection.login(self.user, self.password)
@@ -26,7 +26,7 @@ class IMAPClient:
             raise
 
     def disconnect(self):
-        """Close IMAP connection."""
+        # Close IMAP connection
         if self.connection:
             try:
                 self.connection.logout()
@@ -35,7 +35,7 @@ class IMAPClient:
                 pass
 
     def _decode_header(self, header_value):
-        """Decode email header."""
+        # Decode an email header value
         if header_value is None:
             return ""
 
@@ -44,14 +44,14 @@ class IMAPClient:
 
         for part, encoding in decoded_parts:
             if isinstance(part, bytes):
-                result.append(part.decode(encoding or 'utf-8', errors='ignore'))
+                result.append(part.decode(encoding or "utf-8", errors="ignore"))
             else:
                 result.append(str(part))
 
-        return ''.join(result)
+        return "".join(result)
 
     def _extract_body(self, msg):
-        """Extract text body from email message."""
+        # Extract text body from email message
         body = ""
         html_body = ""
 
@@ -60,35 +60,31 @@ class IMAPClient:
                 content_type = part.get_content_type()
                 content_disposition = str(part.get("Content-Disposition"))
 
-                # Skip attachments
                 if "attachment" in content_disposition:
                     continue
 
-                # Get text/plain content (preferred)
                 if content_type == "text/plain":
                     try:
                         payload = part.get_payload(decode=True)
                         if payload:
-                            body = payload.decode('utf-8', errors='ignore')
+                            body = payload.decode("utf-8", errors="ignore")
                             break
                     except Exception:
                         continue
 
-                # Store text/html as fallback
                 elif content_type == "text/html" and not html_body:
                     try:
                         payload = part.get_payload(decode=True)
                         if payload:
-                            html_body = payload.decode('utf-8', errors='ignore')
+                            html_body = payload.decode("utf-8", errors="ignore")
                     except Exception:
                         continue
         else:
-            # Not multipart
             content_type = msg.get_content_type()
             try:
                 payload = msg.get_payload(decode=True)
                 if payload:
-                    decoded = payload.decode('utf-8', errors='ignore')
+                    decoded = payload.decode("utf-8", errors="ignore")
                     if content_type == "text/html":
                         html_body = decoded
                     else:
@@ -96,22 +92,16 @@ class IMAPClient:
             except Exception:
                 body = str(msg.get_payload())
 
-        # Fallback to HTML if no plain text
         if not body and html_body:
             body = html_body
 
         return body.strip()
 
     def get_emails_last_24h(self, days: int = 1) -> List[Dict]:
-        """Fetch emails from the last N days across multiple folders.
-
-        Args:
-            days: Number of days to look back (default: 1 = last 24h)
-        """
+        # Fetch emails from the last N days across multiple folders
         if not self.connection:
             self.connect()
 
-        # Folders to search in (ProtonMail uses "Folders/" prefix)
         folders = [
             "INBOX",
             "Folders/Not Flood",
@@ -120,29 +110,25 @@ class IMAPClient:
             "Folders/Distro",
             "Folders/VCG-Biz",
             "Folders/Madpoof",
-            "Folders/VCG-Prod"
+            "Folders/VCG-Prod",
         ]
 
         all_emails = []
-        email_ids_seen = set()  # Avoid duplicates
+        email_ids_seen = set()
 
         try:
-            # Calculate date for search (N days ago)
             since_date = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
 
             for folder in folders:
                 try:
-                    # Select folder (wrap in quotes if it contains spaces or special chars)
-                    folder_name = f'"{folder}"' if ' ' in folder or '-' in folder else folder
+                    folder_name = f'"{folder}"' if " " in folder or "-" in folder else folder
                     status, _ = self.connection.select(folder_name)
 
                     if status != "OK":
                         print(f"⚠️  Skipping folder '{folder}' (not found or inaccessible)")
                         continue
 
-                    # Search emails since yesterday
-                    status, messages = self.connection.search(None, f'SINCE {since_date}')
-
+                    status, messages = self.connection.search(None, f"SINCE {since_date}")
                     if status != "OK" or not messages[0]:
                         continue
 
@@ -150,37 +136,34 @@ class IMAPClient:
                     print(f"✓ Found {len(email_ids)} emails in '{folder}'")
 
                     for email_id in email_ids:
-                        # Skip if already processed (avoid duplicates)
                         if email_id in email_ids_seen:
                             continue
                         email_ids_seen.add(email_id)
 
-                        # Fetch email
                         status, msg_data = self.connection.fetch(email_id, "(RFC822)")
-
                         if status != "OK":
                             continue
 
-                        # Parse email
                         raw_email = msg_data[0][1]
                         msg = email.message_from_bytes(raw_email)
 
-                        # Extract fields
                         email_from = self._decode_header(msg.get("From", ""))
                         subject = self._decode_header(msg.get("Subject", ""))
                         date = msg.get("Date", "")
                         cc = self._decode_header(msg.get("Cc", ""))
                         body = self._extract_body(msg)
 
-                        all_emails.append({
-                            "id": email_id.decode(),
-                            "from": email_from,
-                            "subject": subject,
-                            "date": date,
-                            "cc": cc,
-                            "body": body,
-                            "folder": folder  # Add folder info
-                        })
+                        all_emails.append(
+                            {
+                                "id": email_id.decode(),
+                                "from": email_from,
+                                "subject": subject,
+                                "date": date,
+                                "cc": cc,
+                                "body": body,
+                                "folder": folder,
+                            }
+                        )
 
                 except Exception as e:
                     print(f"✗ Error processing folder '{folder}': {e}")
@@ -195,8 +178,8 @@ class IMAPClient:
 
 
 if __name__ == "__main__":
-    # Quick test
     from dotenv import load_dotenv
+
     load_dotenv()
 
     client = IMAPClient()

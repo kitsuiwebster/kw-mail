@@ -1,0 +1,201 @@
+# Email tools for LLM to search and retrieve emails.
+from typing import Dict, List, Optional
+
+from app.email.imap_client import IMAPClient
+from app.mistral.tool_definitions import TOOL_DEFINITIONS
+
+
+def search_emails(query: str = "", max_results: int = 10, days: int = 1) -> List[Dict]:
+    # Search for emails matching the query in from/subject/body
+    imap_client = IMAPClient()
+    imap_client.connect()
+
+    all_emails = imap_client.get_emails_last_24h(days=days)
+    imap_client.disconnect()
+
+    if not all_emails:
+        return []
+
+    if not query or len(query.strip()) <= 2:
+        matching_emails = []
+        for email in all_emails[:max_results]:
+            body_preview = email.get("body", "")[:100].strip()
+            matching_emails.append(
+                {
+                    "id": email["id"],
+                    "from": email["from"],
+                    "subject": email["subject"],
+                    "date": email["date"],
+                    "cc": email.get("cc", ""),
+                    "preview": body_preview,
+                }
+            )
+        print(f"  → Returning {len(matching_emails)} emails (from {len(all_emails)} total)")
+        return matching_emails
+
+    query_lower = query.lower()
+    matching_emails = []
+
+    for email in all_emails:
+        from_field = email.get("from", "").lower()
+        subject_field = email.get("subject", "").lower()
+        body_field = email.get("body", "").lower()
+
+        if query_lower in from_field or query_lower in subject_field or query_lower in body_field:
+            body_preview = email.get("body", "")[:100].strip()
+            matching_emails.append(
+                {
+                    "id": email["id"],
+                    "from": email["from"],
+                    "subject": email["subject"],
+                    "date": email["date"],
+                    "cc": email.get("cc", ""),
+                    "preview": body_preview,
+                }
+            )
+
+            if len(matching_emails) >= max_results:
+                break
+
+    return matching_emails
+
+
+def list_emails_by_date(target_date: str, search_days: int = 7) -> str:
+    # List emails from one specific date
+    import re
+    from datetime import datetime
+
+    imap_client = IMAPClient()
+    imap_client.connect()
+    all_emails = imap_client.get_emails_last_24h(days=search_days)
+    imap_client.disconnect()
+
+    if not all_emails:
+        return f"Aucun email trouvé pour {target_date}"
+
+    try:
+        target_dt = datetime.strptime(target_date, "%Y-%m-%d")
+    except Exception:
+        return f"Format de date invalide: {target_date} (attendu: YYYY-MM-DD)"
+
+    matching_emails = []
+    for email in all_emails:
+        date_str = email.get("date", "")
+        date_match = re.search(r"\d{1,2}\s+\w{3}\s+\d{4}", date_str)
+        if date_match:
+            try:
+                email_date = datetime.strptime(date_match.group(), "%d %b %Y")
+                if email_date.date() == target_dt.date():
+                    matching_emails.append(email)
+            except Exception:
+                continue
+
+    if not matching_emails:
+        return f"Aucun email trouvé pour le {target_dt.strftime('%d %b %Y')}"
+
+    lines = [f"📧 {len(matching_emails)} emails du {target_dt.strftime('%d %b %Y')}:\n"]
+
+    for idx, email in enumerate(matching_emails, 1):
+        from_full = email.get("from", "Unknown")
+        email_match = re.search(r"<(.+?)>", from_full)
+        if email_match:
+            sender = email_match.group(1)
+        else:
+            email_pattern = re.search(r"[\w\.-]+@[\w\.-]+", from_full)
+            sender = email_pattern.group() if email_pattern else from_full[:30]
+
+        subject = email.get("subject", "Sans sujet")[:45]
+
+        date_full = email.get("date", "")
+        time_match = re.search(r"(\d{2}:\d{2})", date_full)
+        time_str = time_match.group() if time_match else ""
+
+        lines.append(f"{idx}. {sender} - {subject} ({time_str})")
+
+    return "\n".join(lines)
+
+
+def list_all_emails(days: int = 1) -> str:
+    # List all emails over a date range
+    import re
+
+    imap_client = IMAPClient()
+    imap_client.connect()
+    all_emails = imap_client.get_emails_last_24h(days=days)
+    imap_client.disconnect()
+
+    if not all_emails:
+        return f"Aucun email trouvé ({days}j)"
+
+    lines = [f"📧 {len(all_emails)} emails ({days}j):\n"]
+
+    for idx, email in enumerate(all_emails, 1):
+        from_full = email.get("from", "Unknown")
+        email_match = re.search(r"<(.+?)>", from_full)
+        if email_match:
+            sender = email_match.group(1)
+        else:
+            email_pattern = re.search(r"[\w\.-]+@[\w\.-]+", from_full)
+            sender = email_pattern.group() if email_pattern else from_full[:30]
+
+        date_full = email.get("date", "")
+        date_match = re.search(r"\d{1,2}\s+\w{3}", date_full)
+        date_str = date_match.group() if date_match else date_full[:10]
+
+        subject = email.get("subject", "Sans sujet")[:45]
+        lines.append(f"{idx}. {sender} - {subject} ({date_str})")
+
+    return "\n".join(lines)
+
+
+def get_full_email(email_id: str, days: int = 1) -> Optional[Dict]:
+    # Retrieve the full content of a specific email
+    imap_client = IMAPClient()
+    imap_client.connect()
+
+    all_emails = imap_client.get_emails_last_24h(days=days)
+    imap_client.disconnect()
+
+    for email in all_emails:
+        if email["id"] == email_id:
+            return email
+
+    return None
+
+
+TOOL_FUNCTIONS = {
+    "list_emails_by_date": list_emails_by_date,
+    "list_all_emails": list_all_emails,
+    "search_emails": search_emails,
+    "get_full_email": get_full_email,
+}
+
+
+def execute_tool(tool_name: str, arguments: dict) -> any:
+    # Execute a tool by name with given arguments
+    if tool_name not in TOOL_FUNCTIONS:
+        raise ValueError(f"Unknown tool: {tool_name}")
+
+    tool_func = TOOL_FUNCTIONS[tool_name]
+    return tool_func(**arguments)
+
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    print("Testing search_emails...")
+    results = search_emails("INPI")
+    print(f"Found {len(results)} emails matching 'INPI'")
+    for email in results:
+        print(f"  - {email['subject']} from {email['from']}")
+
+    print()
+    print("Testing get_full_email...")
+    if results:
+        email_id = results[0]["id"]
+        full_email = get_full_email(email_id)
+        if full_email:
+            print(f"Retrieved email: {full_email['subject']}")
+            print(f"Body preview: {full_email['body'][:200]}...")
