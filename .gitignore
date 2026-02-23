@@ -30,4 +30,4 @@ logs/
 .coverage
 htmlcov/
 
-.env/
+.venv/
