@@ -18,3 +18,13 @@ make dev      # Start container (rebuild)
 make test     # Test IMAP connection (in container)
 make clean    # Clean temp files
 ```
+
+## Webhook Setup
+
+```bash
+# Local (with ngrok)
+./scripts/set_webhook_local.sh https://your-ngrok-url.ngrok-free.dev
+
+# VPS
+./scripts/set_webhook_vps.sh
+```
