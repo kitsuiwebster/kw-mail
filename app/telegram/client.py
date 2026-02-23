@@ -1,4 +1,5 @@
 import os
+import socket
 from typing import Optional
 
 import httpx
@@ -8,6 +9,8 @@ class TelegramClient:
     def __init__(self):
         self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        self.force_ipv4 = os.getenv("TELEGRAM_FORCE_IPV4", "false").lower() == "true"
+        self.timeout = float(os.getenv("TELEGRAM_HTTP_TIMEOUT", "10"))
 
         if not self.bot_token:
             raise ValueError("TELEGRAM_BOT_TOKEN not set in environment")
@@ -15,6 +18,13 @@ class TelegramClient:
             raise ValueError("TELEGRAM_CHAT_ID not set in environment")
 
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
+
+    def _client(self) -> httpx.Client:
+        # Optionally force IPv4 if IPv6 routing is slow/unreliable
+        if self.force_ipv4:
+            transport = httpx.HTTPTransport(local_address="0.0.0.0")
+            return httpx.Client(transport=transport, timeout=self.timeout)
+        return httpx.Client(timeout=self.timeout)
 
     def send_message(self, text: str, chat_id: Optional[str] = None) -> dict:
         # Send a message to Telegram
@@ -25,42 +35,38 @@ class TelegramClient:
             "text": text,
         }
 
-        with httpx.Client() as client:
+        with self._client() as client:
             response = client.post(
                 f"{self.api_url}/sendMessage",
                 json=payload,
-                timeout=10.0,
             )
             response.raise_for_status()
             return response.json()
 
     def set_webhook(self, webhook_url: str) -> dict:
         # Set the webhook URL for receiving updates
-        with httpx.Client() as client:
+        with self._client() as client:
             response = client.post(
                 f"{self.api_url}/setWebhook",
                 json={"url": webhook_url},
-                timeout=10.0,
             )
             response.raise_for_status()
             return response.json()
 
     def delete_webhook(self) -> dict:
         # Delete the current webhook
-        with httpx.Client() as client:
+        with self._client() as client:
             response = client.post(
                 f"{self.api_url}/deleteWebhook",
-                timeout=10.0,
             )
             response.raise_for_status()
             return response.json()
 
     def get_webhook_info(self) -> dict:
         # Get current webhook configuration
-        with httpx.Client() as client:
+        with self._client() as client:
             response = client.get(
                 f"{self.api_url}/getWebhookInfo",
-                timeout=10.0,
             )
             response.raise_for_status()
             return response.json()

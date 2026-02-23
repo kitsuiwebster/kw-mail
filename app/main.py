@@ -78,7 +78,7 @@ async def telegram_webhook(request: Request):
 async def handle_command(command: str, chat_id: str):
     # Route commands to appropriate handlers
     if command == "/today":
-        await handle_today(chat_id, telegram_client)
+        await handle_today(chat_id, telegram_client, last_search_results)
     elif command.startswith("/all") or command.startswith("/tous"):
         await handle_all(command, chat_id, telegram_client)
     elif command == "/summary":

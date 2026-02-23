@@ -13,6 +13,14 @@ class MistralClient:
 
         self.api_url = "https://api.mistral.ai/v1/chat/completions"
         self.model = "mistral-large-latest"
+        self.timeout = float(os.getenv("MISTRAL_HTTP_TIMEOUT", "60"))
+        self.force_ipv4 = os.getenv("MISTRAL_FORCE_IPV4", "false").lower() == "true"
+
+    def _client(self) -> httpx.Client:
+        if self.force_ipv4:
+            transport = httpx.HTTPTransport(local_address="0.0.0.0")
+            return httpx.Client(transport=transport, timeout=self.timeout)
+        return httpx.Client(timeout=self.timeout)
 
     def _build_email_digest(self, emails: List[Dict]) -> str:
         # Build a lightweight digest with only email headers (no body)
@@ -60,12 +68,11 @@ class MistralClient:
             "messages": [{"role": "user", "content": prompt}],
         }
 
-        with httpx.Client() as client:
+        with self._client() as client:
             response = client.post(
                 self.api_url,
                 json=payload,
                 headers=headers,
-                timeout=30.0,
             )
             response.raise_for_status()
             data = response.json()
@@ -103,12 +110,11 @@ class MistralClient:
                 "tool_choice": "auto",
             }
 
-            with httpx.Client() as client:
+            with self._client() as client:
                 response = client.post(
                     self.api_url,
                     json=payload,
                     headers=headers,
-                    timeout=30.0,
                 )
                 response.raise_for_status()
                 data = response.json()

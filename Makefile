@@ -1,4 +1,4 @@
-.PHONY: help install run dev test clean
+.PHONY: help install run dev test clean stop
 
 help:
 	@echo "📧 KW Email Reader - Makefile"
@@ -9,6 +9,7 @@ help:
 	@echo "  make dev        - Lancer le serveur en mode dev (auto-reload)"
 	@echo "  make test       - Tester la connexion IMAP"
 	@echo "  make clean      - Nettoyer les fichiers temporaires"
+	@echo "  make stop       - Stopper les processus uvicorn du projet"
 
 install:
 	@echo "📦 Installation des dépendances..."
@@ -22,6 +23,11 @@ run:
 dev:
 	@echo "🚀 Démarrage du serveur en mode dev (auto-reload)..."
 	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+stop:
+	@echo "🛑 Arrêt des processus uvicorn..."
+	@pkill -f "uvicorn app.main:app" || true
+	@echo "✅ Uvicorn stoppé (si présent)"
 
 test:
 	@echo "🔍 Test de la connexion IMAP..."

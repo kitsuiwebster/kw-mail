@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  kw-mail:
+    build: .
+    container_name: kw-mail
+    env_file:
+      - .env
+    restart: unless-stopped
+    network_mode: host

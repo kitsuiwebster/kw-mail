@@ -21,6 +21,37 @@ async def handle_query(
 ):
     # Handle user queries using Mistral with tool calling
     try:
+        # Fast path: numeric follow-up like "c quoi le 13 ?" -> use last list without LLM
+        m = re.match(r"^\s*(?:c[' ]?quoi|cest\s*quoi|quoi|quel\s+est)?\s*(?:le|la)?\s*(\d{1,3})\s*\??\s*$", query.lower())
+        if m and chat_id in last_search_results:
+            idx = int(m.group(1)) - 1
+            if 0 <= idx < len(last_search_results[chat_id]):
+                email = last_search_results[chat_id][idx]
+                from_full = email.get("from", "Unknown")
+                subject = email.get("subject", "Sans sujet")
+                date = email.get("date", "Unknown")
+                cc = email.get("cc", "")
+                folder = email.get("folder", "")
+                body = (email.get("body", "") or "").strip()
+                preview = body[:1200] + ("…" if len(body) > 1200 else "")
+
+                lines = [
+                    f"📨 Email #{idx+1}",
+                    f"De: {from_full}",
+                    f"Sujet: {subject}",
+                    f"Date: {date}",
+                ]
+                if cc:
+                    lines.append(f"CC: {cc}")
+                if folder:
+                    lines.append(f"Dossier: {folder}")
+                if preview:
+                    lines.append("")
+                    lines.append(preview)
+
+                telegram_client.send_message("\n".join(lines), chat_id)
+                return
+
         telegram_client.send_message("⏳ Traitement de votre question...", chat_id)
 
         if chat_id not in conversation_history:

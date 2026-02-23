@@ -1,6 +1,7 @@
 import email
 import imaplib
 import os
+import ssl
 from datetime import datetime, timedelta
 from email.header import decode_header
 from typing import Dict, List
@@ -10,6 +11,8 @@ class IMAPClient:
     def __init__(self):
         self.host = os.getenv("IMAP_HOST", "127.0.0.1")
         self.port = int(os.getenv("IMAP_PORT", "1143"))
+        self.security = os.getenv("IMAP_SECURITY", "STARTTLS").upper()
+        self.tls_verify = os.getenv("IMAP_TLS_VERIFY", "true").lower() == "true"
         self.user = os.getenv("IMAP_USER")
         self.password = os.getenv("IMAP_PASSWORD")
         self.connection = None
@@ -17,7 +20,18 @@ class IMAPClient:
     def connect(self):
         # Connect to IMAP server (Proton Bridge)
         try:
-            self.connection = imaplib.IMAP4(self.host, self.port)
+            if self.security == "SSL":
+                self.connection = imaplib.IMAP4_SSL(self.host, self.port)
+            else:
+                self.connection = imaplib.IMAP4(self.host, self.port)
+                if self.security == "STARTTLS":
+                    # Upgrade connection to TLS when supported (e.g., Proton Bridge)
+                    if self.tls_verify:
+                        context = ssl.create_default_context()
+                    else:
+                        # Proton Bridge uses a self-signed cert by default
+                        context = ssl._create_unverified_context()
+                    self.connection.starttls(ssl_context=context)
             self.connection.login(self.user, self.password)
             print(f"✓ Connected to IMAP server at {self.host}:{self.port}")
             return True
