@@ -42,14 +42,14 @@ class MistralClient:
 
         return "\n\n".join(digest_lines)
 
-    def summarize_emails(self, emails: List[Dict]) -> str:
+    def summarize_emails(self, emails: List[Dict], window_label: str = "24h") -> str:
         # Generate a summary of emails using Mistral
         if not emails:
-            return "Aucun email reçu dans les dernières 24h."
+            return f"Aucun email reçu dans les dernières {window_label}."
 
         digest = self._build_email_digest(emails)
         prompt = (
-            f"Résume ces {len(emails)} emails (24h).\n\n"
+            f"Résume ces {len(emails)} emails ({window_label}).\n\n"
             f"{digest}\n\n"
             "Format:\n"
             "1. Résumé (2-3 phrases)\n"

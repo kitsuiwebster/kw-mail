@@ -1,4 +1,8 @@
 # FastAPI server entry point for KW Email Reader Telegram bot.
+import os
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 
@@ -6,6 +10,7 @@ from app.config import AUTHORIZED_CHAT_IDS
 from app.handlers.query import handle_query
 from app.logger import logger
 from app.mistral.client import MistralClient
+from app.scheduler import run_summary
 from app.telegram.client import TelegramClient
 from app.telegram.commands import (
     handle_all,
@@ -28,6 +33,28 @@ mistral_client = MistralClient()
 
 conversation_history = {}
 last_search_results = {}
+summary_scheduler = None
+
+
+def _schedule_daily_summaries():
+    enabled = os.getenv("SUMMARY_ENABLED", "true").lower() == "true"
+    if not enabled:
+        logger.info("Summary scheduler disabled")
+        return None
+
+    times = os.getenv("SUMMARY_CRON_TIMES", "09:00,21:00")
+    tz = os.getenv("SUMMARY_TZ", "Europe/Paris")
+    hours = int(os.getenv("SUMMARY_HOURS", "12"))
+
+    scheduler = BackgroundScheduler(timezone=tz)
+    for time_str in [t.strip() for t in times.split(",") if t.strip()]:
+        hh, mm = time_str.split(":")
+        trigger = CronTrigger(hour=int(hh), minute=int(mm), timezone=tz)
+        scheduler.add_job(run_summary, trigger=trigger, args=[hours], id=f"summary_{hh}{mm}")
+
+    scheduler.start()
+    logger.info(f"Summary scheduler started | times={times} tz={tz} hours={hours}")
+    return scheduler
 
 
 @app.get("/")
@@ -100,6 +127,18 @@ async def handle_command(command: str, chat_id: str):
 async def webhook_info():
     # Get current webhook configuration
     return telegram_client.get_webhook_info()
+
+
+@app.on_event("startup")
+async def _on_startup():
+    global summary_scheduler
+    summary_scheduler = _schedule_daily_summaries()
+
+
+@app.on_event("shutdown")
+async def _on_shutdown():
+    if summary_scheduler:
+        summary_scheduler.shutdown()
 
 
 if __name__ == "__main__":
