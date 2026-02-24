@@ -11,7 +11,7 @@ TOOL_DEFINITIONS = [
                 "properties": {
                     "target_date": {
                         "type": "string",
-                        "description": "Date in YYYY-MM-DD format. Examples: 'jeudi' (today=2026-02-23, last Thu=2026-02-20) → '2026-02-20'. 'lundi' → '2026-02-17'. 'hier' (yesterday) → '2026-02-22'. You MUST calculate the date.",
+                        "description": "Date in YYYY-MM-DD format. Examples: 'jeudi' (today=2026-02-24, last Thu=2026-02-19) → '2026-02-19'. 'lundi' → '2026-02-23'. 'hier' (yesterday) → '2026-02-23'. You MUST calculate the date.",
                         "default": "",
                     },
                     "search_days": {
@@ -40,6 +40,29 @@ TOOL_DEFINITIONS = [
                     "max_results": {
                         "type": "integer",
                         "description": "Limit to N most recent emails. Use for 'les 5 derniers', 'les 10 derniers'. 0 = no limit (all). Default: 0",
+                        "default": 0,
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_emails_last_hours",
+            "description": "List ALL emails from the last N hours (rolling window). Use for: 'les 12 dernières heures', 'depuis 3h'. Returns formatted string. DETERMINISTIC - ONE call only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hours": {
+                        "type": "integer",
+                        "description": "Hours back. Examples: 12, 6, 3. Default: 12",
+                        "default": 12,
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Limit to N most recent emails. 0 = no limit (all). Default: 0",
                         "default": 0,
                     }
                 },

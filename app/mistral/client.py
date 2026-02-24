@@ -42,6 +42,29 @@ class MistralClient:
 
         return "\n\n".join(digest_lines)
 
+    def _build_email_digest_with_preview(self, emails: List[Dict], preview_len: int = 240) -> str:
+        # Build a digest with headers + short body preview
+        digest_lines = []
+        for idx, email in enumerate(emails, 1):
+            from_addr = email.get("from", "Unknown")
+            subject = email.get("subject", "No Subject")
+            date = email.get("date", "Unknown Date")
+            cc = email.get("cc", "")
+            body = (email.get("body", "") or "").strip()
+            preview = body[:preview_len] + ("…" if len(body) > preview_len else "")
+
+            email_entry = (
+                f"[Email {idx}]\nFrom: {from_addr}\nSubject: {subject}\nDate: {date}"
+            )
+            if cc:
+                email_entry += f"\nCC: {cc}"
+            if preview:
+                email_entry += f"\nPreview: {preview}"
+            email_entry += "\n---"
+            digest_lines.append(email_entry)
+
+        return "\n\n".join(digest_lines)
+
     def summarize_emails(self, emails: List[Dict], window_label: str = "24h") -> str:
         # Generate a summary of emails using Mistral
         if not emails:
@@ -58,7 +81,7 @@ class MistralClient:
             "INTERDICTIONS:\n"
             "- ZERO markdown (* ** # _ ` [ ])\n"
             "- ZERO gras, italique, code\n"
-            "Emojis OK. Spam vs important."
+            "Emojis OK. Ton respectueux, aucune insulte."
         )
 
         headers = {
@@ -80,6 +103,59 @@ class MistralClient:
             data = response.json()
 
         return data["choices"][0]["message"]["content"]
+
+    def classify_important_emails(self, emails: List[Dict], window_label: str = "12h") -> Dict:
+        # Identify important emails and provide short explanations
+        if not emails:
+            return {"important": []}
+
+        digest = self._build_email_digest_with_preview(emails)
+        prompt = (
+            f"Tu reçois {len(emails)} emails ({window_label}).\n"
+            "Ta tâche: identifier les emails importants et pertinents à traiter rapidement.\n"
+            "Important = action requise, finance, clients, sécurité, rendez-vous, délais.\n"
+            "Ignore newsletters, promotions, automatisés sans action.\n\n"
+            f"{digest}\n\n"
+            "Réponds en JSON strict, uniquement le JSON, sans texte.\n"
+            "Format:\n"
+            "{\"important\":[{\"index\":1,\"explanation\":\"phrase courte\"}]}\n"
+            "Règles:\n"
+            "- index commence à 1 (Email 1 = index 1)\n"
+            "- explanation: 8-15 mots max, français, factuel\n"
+            "- si aucun important: {\"important\":[]}\n"
+            "- ton respectueux, aucune insulte\n"
+            "- pas de markdown"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+
+        with self._client() as client:
+            response = client.post(
+                self.api_url,
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        content = data["choices"][0]["message"]["content"]
+        try:
+            return json.loads(content)
+        except Exception:
+            # Try to extract JSON block if the model added extra text
+            try:
+                start = content.index("{")
+                end = content.rindex("}") + 1
+                return json.loads(content[start:end])
+            except Exception:
+                return {"important": []}
 
     def chat_with_tools(
         self,

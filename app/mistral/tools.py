@@ -1,4 +1,6 @@
 # Email tools for LLM to search and retrieve emails.
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import Dict, List, Optional
 
 from app.email.imap_client import IMAPClient
@@ -155,6 +157,78 @@ def list_all_emails(days: int = 1, max_results: int = 0) -> str:
     return "\n".join(lines)
 
 
+def _parse_email_dt(date_str: str) -> datetime | None:
+    try:
+        dt = parsedate_to_datetime(date_str)
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
+def _filter_last_hours(emails: List[Dict], hours: int) -> List[Dict]:
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    recent = []
+    for email in emails:
+        dt = _parse_email_dt(email.get("date", ""))
+        if dt and dt >= cutoff:
+            recent.append(email)
+    return recent
+
+
+def list_emails_last_hours(hours: int = 12, max_results: int = 0) -> str:
+    # List all emails from the last N hours (rolling window)
+    import math
+    import re
+
+    if hours <= 0:
+        return "Heures invalides (doit être > 0)"
+
+    imap_client = IMAPClient()
+    imap_client.connect()
+    days = max(1, int(math.ceil(hours / 24)))
+    all_emails = imap_client.get_emails_last_24h(days=days)
+    imap_client.disconnect()
+
+    if not all_emails:
+        return f"Aucun email trouvé ({hours}h)"
+
+    recent_emails = _filter_last_hours(all_emails, hours)
+    if not recent_emails:
+        return f"Aucun email trouvé ({hours}h)"
+
+    # Most recent first
+    recent_emails.sort(key=lambda e: _parse_email_dt(e.get("date", "")) or datetime.min, reverse=True)
+
+    emails_to_show = recent_emails[:max_results] if max_results > 0 else recent_emails
+
+    if max_results > 0:
+        lines = [f"📌 {len(emails_to_show)} derniers emails ({hours}h):\n"]
+    else:
+        lines = [f"📌 {len(emails_to_show)} emails ({hours}h):\n"]
+
+    for idx, email in enumerate(emails_to_show, 1):
+        from_full = email.get("from", "Unknown")
+        email_match = re.search(r"<(.+?)>", from_full)
+        if email_match:
+            sender = email_match.group(1)
+        else:
+            email_pattern = re.search(r"[\w\.-]+@[\w\.-]+", from_full)
+            sender = email_pattern.group() if email_pattern else from_full[:30]
+
+        date_full = email.get("date", "")
+        time_match = re.search(r"(\d{2}:\d{2})", date_full)
+        time_str = time_match.group() if time_match else ""
+
+        subject = email.get("subject", "Sans sujet")[:45]
+        lines.append(f"{idx}. {sender} - {subject} ({time_str})")
+
+    return "\n".join(lines)
+
+
 def get_full_email(email_id: str, days: int = 1) -> Optional[Dict]:
     # Retrieve the full content of a specific email
     imap_client = IMAPClient()
@@ -173,6 +247,7 @@ def get_full_email(email_id: str, days: int = 1) -> Optional[Dict]:
 TOOL_FUNCTIONS = {
     "list_emails_by_date": list_emails_by_date,
     "list_all_emails": list_all_emails,
+    "list_emails_last_hours": list_emails_last_hours,
     "search_emails": search_emails,
     "get_full_email": get_full_email,
 }
