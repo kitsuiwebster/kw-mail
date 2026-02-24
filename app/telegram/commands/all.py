@@ -27,7 +27,7 @@ async def handle_all(command: str, chat_id: str, telegram_client: TelegramClient
             telegram_client.send_message("Aucun email trouvé", chat_id)
             return
 
-        lines = [f"📧 {len(emails)} emails ({days}j):\n"]
+        lines = [f"📌 {len(emails)} emails ({days}j):\n"]
 
         for idx, email in enumerate(emails, 1):
             from_full = email.get("from", "Unknown")

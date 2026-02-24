@@ -4,6 +4,8 @@ from typing import Optional
 
 import httpx
 
+from app.logger import logger
+
 
 class TelegramClient:
     def __init__(self):
@@ -79,6 +81,6 @@ if __name__ == "__main__":
 
     client = TelegramClient()
 
-    print("Sending test message...")
-    result = client.send_message("✓ KW Email Reader - Telegram client test")
-    print(f"Message sent: {result['ok']}")
+    logger.info("Sending test message...")
+    result = client.send_message("👉 KW Email Reader - Telegram client test")
+    logger.info(f"Message sent: {result['ok']}")

@@ -4,6 +4,8 @@ from typing import Dict, List
 
 import httpx
 
+from app.logger import logger
+
 
 class MistralClient:
     def __init__(self):
@@ -125,18 +127,18 @@ class MistralClient:
             tool_calls = message.get("tool_calls")
             if not tool_calls:
                 final_content = message.get("content", "")
-                print(f"  ✓ Final response: {final_content[:100]}...")
+                logger.info(f"AI response complete | preview={final_content[:80]}...")
                 return final_content
 
             if message.get("content"):
-                print(f"  ⚠️ Intermediate content (ignored): {message.get('content')[:100]}...")
+                logger.debug(f"AI intermediate content | preview={message.get('content')[:80]}...")
 
             for tool_call in tool_calls:
                 tool_name = tool_call["function"]["name"]
                 tool_args = json.loads(tool_call["function"]["arguments"])
                 tool_id = tool_call["id"]
 
-                print(f"  → Executing tool: {tool_name}({tool_args})")
+                logger.info(f"Tool called | tool={tool_name} | args={tool_args}")
 
                 try:
                     tool_result = tool_executor(tool_name, tool_args)
@@ -188,6 +190,6 @@ if __name__ == "__main__":
         },
     ]
 
-    print("Testing Mistral summarization...")
+    logger.info("Testing Mistral summarization...")
     summary = client.summarize_emails(test_emails)
-    print(summary)
+    logger.info(summary)

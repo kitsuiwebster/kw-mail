@@ -20,7 +20,7 @@ async def handle_summary(chat_id: str, telegram_client: TelegramClient, mistral_
 
         summary = mistral_client.summarize_emails(emails)
         clean_summary = remove_markdown(summary)
-        telegram_client.send_message(f"📊 Résumé des emails (24h)\n\n{clean_summary}", chat_id)
+        telegram_client.send_message(f"📌 Résumé des emails (24h)\n\n{clean_summary}", chat_id)
 
     except Exception as e:
         telegram_client.send_message(f"❌ Erreur : {str(e)}", chat_id)

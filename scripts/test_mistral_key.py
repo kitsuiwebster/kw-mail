@@ -41,12 +41,12 @@ try:
         print(f"Response: {response.text[:200]}")
 
         if response.status_code == 401:
-            print("\n✗ API Key is INVALID")
+            print("\n❌ API Key is INVALID")
             print("  Get a valid key from: https://console.mistral.ai/api-keys/")
         elif response.status_code == 200:
-            print("\n✓ API Key is VALID")
+            print("\n👉 API Key is VALID")
         else:
             print(f"\n? Unexpected status: {response.status_code}")
 
 except Exception as e:
-    print(f"✗ Error: {e}")
+    print(f"❌ Error: {e}")

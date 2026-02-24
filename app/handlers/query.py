@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 
 from app.email.imap_client import IMAPClient
+from app.logger import logger
 from app.mistral.client import MistralClient
 from app.mistral.prompts import SYSTEM_PROMPT
 from app.mistral.tool_definitions import TOOL_DEFINITIONS
@@ -21,7 +22,6 @@ async def handle_query(
 ):
     # Handle user queries using Mistral with tool calling
     try:
-        # Fast path: numeric follow-up like "c quoi le 13 ?" -> use last list without LLM
         m = re.match(r"^\s*(?:c[' ]?quoi|cest\s*quoi|quoi|quel\s+est)?\s*(?:le|la)?\s*(\d{1,3})\s*\??\s*$", query.lower())
         if m and chat_id in last_search_results:
             idx = int(m.group(1)) - 1
@@ -59,8 +59,7 @@ async def handle_query(
 
         conversation_history[chat_id].append({"role": "user", "content": query})
 
-        print(f"Processing query with tools (chat {chat_id}): {query}")
-        print(f"Conversation history: {len(conversation_history[chat_id])} messages")
+        logger.info(f"Query processing | chat={chat_id} | query='{query}' | history={len(conversation_history[chat_id])} msgs")
 
         list_tool_used = {"used": False}
 
@@ -71,7 +70,7 @@ async def handle_query(
                 list_tool_used["used"] = True
 
                 if len(result) > 4000:
-                    print(f"  → {tool_name} result too long ({len(result)} chars), sending in chunks")
+                    logger.info(f"Tool result chunked | tool={tool_name} | size={len(result)} chars")
                     chunks = []
                     current_chunk = ""
 
@@ -95,7 +94,7 @@ async def handle_query(
 
             if tool_name == "search_emails" and result:
                 last_search_results[chat_id] = result
-                print(f"  Stored {len(result)} search results for chat {chat_id}")
+                logger.info(f"Search results cached | chat={chat_id} | count={len(result)}")
 
             if tool_name == "list_all_emails" and isinstance(result, str):
                 imap_client_temp = IMAPClient()
@@ -103,7 +102,7 @@ async def handle_query(
                 emails = imap_client_temp.get_emails_last_24h(days=arguments.get("days", 1))
                 imap_client_temp.disconnect()
                 last_search_results[chat_id] = emails
-                print(f"  Stored {len(emails)} emails from list_all for chat {chat_id}")
+                logger.info(f"List results cached | chat={chat_id} | count={len(emails)}")
 
             if tool_name == "list_emails_by_date" and isinstance(result, str):
                 imap_client_temp = IMAPClient()
@@ -126,7 +125,7 @@ async def handle_query(
                             except Exception:
                                 continue
                     last_search_results[chat_id] = filtered
-                    print(f"  Stored {len(filtered)} emails from list_by_date for chat {chat_id}")
+                    logger.info(f"Filtered results cached | chat={chat_id} | count={len(filtered)}")
                 except Exception:
                     pass
 
@@ -137,7 +136,7 @@ async def handle_query(
                         idx = int(email_id) - 1
                         if 0 <= idx < len(last_search_results[chat_id]):
                             real_id = last_search_results[chat_id][idx]["id"]
-                            print(f"  Resolved index {email_id} to ID {real_id}")
+                            logger.info(f"Email index resolved | index={email_id} | id={real_id}")
                             arguments["email_id"] = real_id
                             result = execute_tool(tool_name, arguments)
                     except ValueError:
@@ -164,8 +163,8 @@ async def handle_query(
         if not list_tool_used["used"]:
             telegram_client.send_message(clean_response, chat_id)
         else:
-            print("  ✓ Skipping final response (list tool already sent result)")
+            logger.info(f"Response skipped | chat={chat_id} | reason=list_tool_sent")
 
     except Exception as e:
-        print(f"Error in handle_query: {e}")
+        logger.error(f"Query handling failed | chat={chat_id} | error={e}")
         telegram_client.send_message(f"❌ Erreur : {str(e)}", chat_id)

@@ -2,6 +2,7 @@
 from typing import Dict, List, Optional
 
 from app.email.imap_client import IMAPClient
+from app.logger import logger
 from app.mistral.tool_definitions import TOOL_DEFINITIONS
 
 
@@ -30,7 +31,7 @@ def search_emails(query: str = "", max_results: int = 10, days: int = 1) -> List
                     "preview": body_preview,
                 }
             )
-        print(f"  → Returning {len(matching_emails)} emails (from {len(all_emails)} total)")
+        logger.info(f"Search complete | matched={len(matching_emails)} | total={len(all_emails)}")
         return matching_emails
 
     query_lower = query.lower()
@@ -93,7 +94,7 @@ def list_emails_by_date(target_date: str, search_days: int = 7) -> str:
     if not matching_emails:
         return f"Aucun email trouvé pour le {target_dt.strftime('%d %b %Y')}"
 
-    lines = [f"📧 {len(matching_emails)} emails du {target_dt.strftime('%d %b %Y')}:\n"]
+    lines = [f"📌 {len(matching_emails)} emails du {target_dt.strftime('%d %b %Y')}:\n"]
 
     for idx, email in enumerate(matching_emails, 1):
         from_full = email.get("from", "Unknown")
@@ -115,8 +116,8 @@ def list_emails_by_date(target_date: str, search_days: int = 7) -> str:
     return "\n".join(lines)
 
 
-def list_all_emails(days: int = 1) -> str:
-    # List all emails over a date range
+def list_all_emails(days: int = 1, max_results: int = 0) -> str:
+    # List all emails over a date range (optionally limit to max_results most recent)
     import re
 
     imap_client = IMAPClient()
@@ -127,9 +128,15 @@ def list_all_emails(days: int = 1) -> str:
     if not all_emails:
         return f"Aucun email trouvé ({days}j)"
 
-    lines = [f"📧 {len(all_emails)} emails ({days}j):\n"]
+    # Limit to max_results if specified (most recent first)
+    emails_to_show = all_emails[:max_results] if max_results > 0 else all_emails
 
-    for idx, email in enumerate(all_emails, 1):
+    if max_results > 0:
+        lines = [f"📌 {len(emails_to_show)} derniers emails ({days}j):\n"]
+    else:
+        lines = [f"📌 {len(emails_to_show)} emails ({days}j):\n"]
+
+    for idx, email in enumerate(emails_to_show, 1):
         from_full = email.get("from", "Unknown")
         email_match = re.search(r"<(.+?)>", from_full)
         if email_match:
@@ -185,17 +192,17 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    print("Testing search_emails...")
+    logger.info("Testing search_emails...")
     results = search_emails("INPI")
-    print(f"Found {len(results)} emails matching 'INPI'")
+    logger.info(f"Found {len(results)} emails matching 'INPI'")
     for email in results:
-        print(f"  - {email['subject']} from {email['from']}")
+        logger.info(f"  - {email['subject']} from {email['from']}")
 
-    print()
-    print("Testing get_full_email...")
+    logger.info("")
+    logger.info("Testing get_full_email...")
     if results:
         email_id = results[0]["id"]
         full_email = get_full_email(email_id)
         if full_email:
-            print(f"Retrieved email: {full_email['subject']}")
-            print(f"Body preview: {full_email['body'][:200]}...")
+            logger.info(f"Retrieved email: {full_email['subject']}")
+            logger.info(f"Body preview: {full_email['body'][:200]}...")

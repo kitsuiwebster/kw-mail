@@ -4,7 +4,10 @@ import os
 import ssl
 from datetime import datetime, timedelta
 from email.header import decode_header
+from email.utils import parsedate_to_datetime
 from typing import Dict, List
+
+from app.logger import logger
 
 
 class IMAPClient:
@@ -33,10 +36,10 @@ class IMAPClient:
                         context = ssl._create_unverified_context()
                     self.connection.starttls(ssl_context=context)
             self.connection.login(self.user, self.password)
-            print(f"✓ Connected to IMAP server at {self.host}:{self.port}")
+            logger.info(f"IMAP connected | host={self.host}:{self.port} | user={self.user}")
             return True
         except Exception as e:
-            print(f"✗ IMAP connection failed: {e}")
+            logger.error(f"IMAP connection failed | host={self.host}:{self.port} | error={e}")
             raise
 
     def disconnect(self):
@@ -44,7 +47,7 @@ class IMAPClient:
         if self.connection:
             try:
                 self.connection.logout()
-                print("✓ Disconnected from IMAP server")
+                logger.info("IMAP disconnected")
             except Exception:
                 pass
 
@@ -139,7 +142,7 @@ class IMAPClient:
                     status, _ = self.connection.select(folder_name)
 
                     if status != "OK":
-                        print(f"⚠️  Skipping folder '{folder}' (not found or inaccessible)")
+                        logger.warning(f"Folder skipped | folder='{folder}' | reason=inaccessible")
                         continue
 
                     status, messages = self.connection.search(None, f"SINCE {since_date}")
@@ -147,7 +150,7 @@ class IMAPClient:
                         continue
 
                     email_ids = messages[0].split()
-                    print(f"✓ Found {len(email_ids)} emails in '{folder}'")
+                    logger.info(f"Emails fetched | folder='{folder}' | count={len(email_ids)}")
 
                     for email_id in email_ids:
                         if email_id in email_ids_seen:
@@ -180,14 +183,29 @@ class IMAPClient:
                         )
 
                 except Exception as e:
-                    print(f"✗ Error processing folder '{folder}': {e}")
+                    logger.error(f"Folder processing failed | folder='{folder}' | error={e}")
                     continue
 
-            print(f"✓ Total: {len(all_emails)} emails from {len(folders)} folders (last {days} day(s))")
+            # Sort by date (oldest first)
+            def get_email_datetime(email_dict):
+                try:
+                    date_str = email_dict.get('date', '')
+                    dt = parsedate_to_datetime(date_str)
+                    # Remove timezone info to avoid comparison issues
+                    if dt.tzinfo is not None:
+                        dt = dt.replace(tzinfo=None)
+                    return dt
+                except Exception:
+                    # If parsing fails, put at the end
+                    return datetime.max
+
+            all_emails.sort(key=get_email_datetime)
+
+            logger.info(f"Email fetch complete | total={len(all_emails)} | folders={len(folders)} | days={days}")
             return all_emails
 
         except Exception as e:
-            print(f"✗ Error fetching emails: {e}")
+            logger.error(f"Email fetch failed | error={e}")
             raise
 
 
@@ -200,15 +218,15 @@ if __name__ == "__main__":
     client.connect()
     emails = client.get_emails_last_24h()
 
-    print(f"\n{'='*80}")
-    print(f"EMAILS FROM LAST 24H: {len(emails)}")
-    print(f"{'='*80}\n")
+    logger.info(f"\n{'='*80}")
+    logger.info(f"EMAILS FROM LAST 24H: {len(emails)}")
+    logger.info(f"{'='*80}\n")
 
     for idx, email_data in enumerate(emails, 1):
-        print(f"[{idx}] From: {email_data['from']}")
-        print(f"    Subject: {email_data['subject']}")
-        print(f"    Date: {email_data['date']}")
-        print(f"    Body Preview: {email_data['body'][:200]}...")
-        print(f"{'-'*80}\n")
+        logger.info(f"[{idx}] From: {email_data['from']}")
+        logger.info(f"    Subject: {email_data['subject']}")
+        logger.info(f"    Date: {email_data['date']}")
+        logger.info(f"    Body Preview: {email_data['body'][:200]}...")
+        logger.info(f"{'-'*80}\n")
 
     client.disconnect()

@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from app.config import AUTHORIZED_CHAT_IDS
 from app.handlers.query import handle_query
+from app.logger import logger
 from app.mistral.client import MistralClient
 from app.telegram.client import TelegramClient
 from app.telegram.commands import (
@@ -48,11 +49,11 @@ async def telegram_webhook(request: Request):
         chat_id = str(message["chat"]["id"])
         user_text = message.get("text", "")
 
-        print(f"Received message from {chat_id}: {user_text}")
+        logger.info(f"Message received | chat={chat_id} | text='{user_text}'")
 
         if chat_id not in AUTHORIZED_CHAT_IDS:
             username = message.get("from", {}).get("username", "unknown")
-            print(f"⚠️  Unauthorized access attempt from {username} (chat_id: {chat_id})")
+            logger.warning(f"Unauthorized access denied | user={username} | chat={chat_id}")
             telegram_client.send_message("🚫 Accès non autorisé. Ce bot est privé.", chat_id)
             return {"ok": True}
 
@@ -71,7 +72,7 @@ async def telegram_webhook(request: Request):
         return {"ok": True}
 
     except Exception as e:
-        print(f"Error processing webhook: {e}")
+        logger.error(f"Webhook processing failed | error={e}")
         return {"ok": False, "error": str(e)}
 
 
@@ -104,4 +105,35 @@ async def webhook_info():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config={
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "uvicorn": {
+                    "()": "app.logger.UvicornFormatter",
+                },
+            },
+            "filters": {
+                "skip_marked": {
+                    "()": "app.logger.SkipMarkedFilter",
+                },
+            },
+            "handlers": {
+                "default": {
+                    "formatter": "uvicorn",
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                    "filters": ["skip_marked"],
+                },
+            },
+            "loggers": {
+                "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
+                "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
+                "uvicorn.access": {"handlers": ["default"], "level": "WARNING", "propagate": False},  # Skip normal HTTP logs
+            },
+        },
+    )

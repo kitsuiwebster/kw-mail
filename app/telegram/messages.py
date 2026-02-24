@@ -1,13 +1,13 @@
 # Static Telegram messages.
 
 MENU_TEXT = (
-    "📋 COMMANDES DISPONIBLES\n\n"
-    "📧 Lister les emails:\n"
+    "🎮 COMMANDES DISPONIBLES\n\n"
+    "👉 Lister les emails:\n"
     "/today - Emails d'aujourd'hui uniquement\n"
     "/all - Tous les emails (24h)\n"
     "/all 7 - Tous les emails (7 jours)\n"
     "/all 30 - Tous les emails (30 jours)\n\n"
-    "📊 Résumé:\n"
+    "👉 Résumé:\n"
     "/summary - Résumé IA des emails (24h)\n\n"
     "🔧 Utilitaires:\n"
     "/reset - Réinitialiser la conversation\n"
@@ -16,13 +16,13 @@ MENU_TEXT = (
 )
 
 WELCOME_TEXT = (
-    "🚀 Bienvenue sur KW Email Reader !\n\n"
+    "🚩 Bienvenue sur KW Mail !\n\n"
     "⚡ Commandes rapides :\n"
     "/today - Emails d'aujourd'hui\n"
     "/all - Tous les emails (24h)\n"
     "/menu - Voir toutes les commandes\n"
     "/help - Aide complète\n\n"
-    "💬 Questions naturelles :\n"
+    "👉 Questions naturelles :\n"
     "• \"mails de jeudi\"\n"
     "• \"mails INPI du dernier mois\"\n"
     "• \"lis le 2e email\"\n\n"
@@ -30,7 +30,7 @@ WELCOME_TEXT = (
 )
 
 HELP_TEXT = (
-    "📋 AIDE KW EMAIL READER\n\n"
+    "📦 AIDE KW MAIL\n\n"
     "⚡ Commandes principales:\n"
     "/menu - Liste complète des commandes\n"
     "/today - Emails d'aujourd'hui uniquement\n"
@@ -38,7 +38,7 @@ HELP_TEXT = (
     "/all 7 - Tous les emails (semaine)\n"
     "/summary - Résumé IA (24h)\n"
     "/reset - Reset conversation\n\n"
-    "💬 Questions naturelles (IA):\n\n"
+    "👉 Questions naturelles (IA):\n\n"
     "📅 Par date:\n"
     "• \"mails de jeudi\"\n"
     "• \"mails du 20 février\"\n"
@@ -47,7 +47,7 @@ HELP_TEXT = (
     "• \"mails INPI\"\n"
     "• \"mails Etsy du dernier mois\"\n"
     "• \"ai-je reçu quelque chose d'urgent ?\"\n\n"
-    "📧 Détails:\n"
+    "👀 Détails:\n"
     "• \"lis le 2\"\n"
     "• \"détails du 5\"\n\n"
     "🧠 Mémoire: dites \"le 2e\" ou \"celui-là\"\n\n"

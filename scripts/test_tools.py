@@ -30,7 +30,7 @@ def main():
         results = search_emails("INPI")
 
         if results:
-            print(f"✓ Found {len(results)} matching emails:")
+            print(f"👉 Found {len(results)} matching emails:")
             for idx, email in enumerate(results, 1):
                 print(f"  [{idx}] From: {email['from']}")
                 print(f"      Subject: {email['subject']}")
@@ -51,13 +51,13 @@ def main():
             full_email = get_full_email(email_id)
 
             if full_email:
-                print("✓ Retrieved email:")
+                print("👉 Retrieved email:")
                 print(f"  From: {full_email['from']}")
                 print(f"  Subject: {full_email['subject']}")
                 print(f"  Date: {full_email['date']}")
                 print(f"  Body preview: {full_email['body'][:200]}...")
             else:
-                print("✗ Email not found")
+                print("❌ Email not found")
         else:
             print("Skipping (no search results from Test 1)")
 
@@ -115,7 +115,7 @@ def main():
 
         print()
         print("=" * 80)
-        print("✓ ÉTAPE 4 - TOOL SYSTEM VALIDATED")
+        print("👉 ÉTAPE 4 - TOOL SYSTEM VALIDATED")
         print("=" * 80)
         print()
         print("The tool system is working!")
@@ -133,7 +133,7 @@ def main():
     except Exception as e:
         print()
         print("=" * 80)
-        print(f"✗ ÉTAPE 4 FAILED: {e}")
+        print(f"❌ ÉTAPE 4 FAILED: {e}")
         print("=" * 80)
         import traceback
 

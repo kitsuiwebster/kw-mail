@@ -24,7 +24,7 @@ def main():
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
     if missing_vars:
-        print(f"✗ Missing environment variables: {', '.join(missing_vars)}")
+        print(f"❌ Missing environment variables: {', '.join(missing_vars)}")
         print("  Create a .env file based on .env.example")
         return 1
 
@@ -69,14 +69,14 @@ def main():
 
         print()
         print("=" * 80)
-        print("✓ ÉTAPE 1 COMPLETED SUCCESSFULLY")
+        print("👉 ÉTAPE 1 COMPLETED SUCCESSFULLY")
         print("=" * 80)
         return 0
 
     except Exception as e:
         print()
         print("=" * 80)
-        print(f"✗ ÉTAPE 1 FAILED: {e}")
+        print(f"❌ ÉTAPE 1 FAILED: {e}")
         print("=" * 80)
         return 1
 

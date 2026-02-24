@@ -25,7 +25,7 @@ def main():
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
     if missing_vars:
-        print(f"✗ Missing environment variables: {', '.join(missing_vars)}")
+        print(f"❌ Missing environment variables: {', '.join(missing_vars)}")
         print("  Make sure all credentials are set in .env file")
         return 1
 
@@ -68,7 +68,7 @@ def main():
         print(summary)
         print()
         print("=" * 80)
-        print("✓ ÉTAPE 2 COMPLETED SUCCESSFULLY")
+        print("👉 ÉTAPE 2 COMPLETED SUCCESSFULLY")
         print("=" * 80)
 
         return 0
@@ -76,7 +76,7 @@ def main():
     except Exception as e:
         print()
         print("=" * 80)
-        print(f"✗ ÉTAPE 2 FAILED: {e}")
+        print(f"❌ ÉTAPE 2 FAILED: {e}")
         print("=" * 80)
         import traceback
 

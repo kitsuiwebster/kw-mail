@@ -3,6 +3,7 @@ import re
 import time
 
 from app.email.imap_client import IMAPClient
+from app.logger import logger
 from app.telegram.client import TelegramClient
 from app.telegram.commands._shared import send_in_chunks
 
@@ -11,17 +12,17 @@ async def handle_today(chat_id: str, telegram_client: TelegramClient, last_searc
     # Handle /today command - show today's emails only
     try:
         start_ts = time.time()
-        print(f"[today] start chat_id={chat_id} ts={start_ts:.3f}")
+        logger.info(f"Command /today started | chat={chat_id}")
         telegram_client.send_message("🌀 Chargement...", chat_id)
         sent_ts = time.time()
-        print(f"[today] sent_loading chat_id={chat_id} dt={sent_ts - start_ts:.3f}s")
+        logger.debug(f"/today loading sent | chat={chat_id} | dt={sent_ts - start_ts:.3f}s")
 
         imap_client = IMAPClient()
         imap_client.connect()
         all_emails = imap_client.get_emails_last_24h(days=1)
         imap_client.disconnect()
         imap_ts = time.time()
-        print(f"[today] imap_done chat_id={chat_id} dt={imap_ts - sent_ts:.3f}s total={imap_ts - start_ts:.3f}s")
+        logger.info(f"/today fetch complete | chat={chat_id} | imap_time={imap_ts - sent_ts:.3f}s | total={imap_ts - start_ts:.3f}s")
 
         if not all_emails:
             telegram_client.send_message("Aucun email aujourd'hui", chat_id)
@@ -48,7 +49,7 @@ async def handle_today(chat_id: str, telegram_client: TelegramClient, last_searc
         if last_search_results is not None:
             last_search_results[chat_id] = today_emails
 
-        lines = [f"📧 {len(today_emails)} emails aujourd'hui:\n"]
+        lines = [f"👉 {len(today_emails)} emails aujourd'hui:\n"]
 
         for idx, email in enumerate(today_emails, 1):
             from_full = email.get("from", "Unknown")

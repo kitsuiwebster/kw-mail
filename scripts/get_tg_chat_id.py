@@ -42,7 +42,7 @@ try:
         data = json.loads(response.read())
 
     if not data.get("result"):
-        print("✗ No messages found")
+        print("❌ No messages found")
         print("  Make sure you sent a message to your bot first!")
         sys.exit(1)
 
@@ -51,7 +51,7 @@ try:
     username = last_update["message"]["chat"].get("username", "N/A")
 
     print()
-    print("✓ Found your chat!")
+    print("👉 Found your chat!")
     print(f"  Username: @{username}")
     print(f"  Chat ID: {chat_id}")
     print()
@@ -60,7 +60,7 @@ try:
     print()
 
 except Exception as e:
-    print(f"✗ Error: {e}")
+    print(f"❌ Error: {e}")
     print()
     print("Troubleshooting:")
     print("- Check that your TELEGRAM_BOT_TOKEN is correct")

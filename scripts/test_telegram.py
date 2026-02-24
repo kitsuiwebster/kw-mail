@@ -24,24 +24,24 @@ def main():
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
     if missing_vars:
-        print(f"✗ Missing environment variables: {', '.join(missing_vars)}")
+        print(f"❌ Missing environment variables: {', '.join(missing_vars)}")
         print("  Make sure Telegram credentials are set in .env file")
         return 1
 
     try:
         print("Initializing Telegram client...")
         client = TelegramClient()
-        print("✓ Client initialized")
+        print("👉 Client initialized")
         print()
 
         print("Test 1: Sending simple message...")
         print("-" * 80)
-        result = client.send_message("✓ Test message from KW Email Reader")
+        result = client.send_message("👉 Test message from KW Email Reader")
 
         if result.get("ok"):
-            print("✓ Message sent successfully")
+            print("👉 Message sent successfully")
         else:
-            print(f"✗ Failed to send message: {result}")
+            print(f"❌ Failed to send message: {result}")
             return 1
 
         print()
@@ -52,18 +52,18 @@ def main():
         formatted_message = (
             "KW Email Reader - Test 📧\n\n"
             "Features:\n"
-            "- ✓ IMAP connection to Proton Bridge\n"
-            "- ✓ Mistral AI summarization\n"
-            "- ✓ Telegram bot integration\n\n"
+            "-👉 IMAP connection to Proton Bridge\n"
+            "-👉 Mistral AI summarization\n"
+            "-👉 Telegram bot integration\n\n"
             "All systems operational!"
         )
 
         result = client.send_message(formatted_message)
 
         if result.get("ok"):
-            print("✓ Formatted message sent successfully")
+            print("👉 Formatted message sent successfully")
         else:
-            print(f"✗ Failed to send formatted message: {result}")
+            print(f"❌ Failed to send formatted message: {result}")
             return 1
 
         print()
@@ -89,11 +89,11 @@ def main():
                 print("   2. Run the FastAPI server")
                 print("   3. Set webhook to: https://your-domain.com/webhook")
         else:
-            print(f"✗ Failed to get webhook info: {webhook_info}")
+            print(f"❌ Failed to get webhook info: {webhook_info}")
 
         print()
         print("=" * 80)
-        print("✓ ÉTAPE 3 - TELEGRAM CLIENT VALIDATED")
+        print("👉 ÉTAPE 3 - TELEGRAM CLIENT VALIDATED")
         print("=" * 80)
         print()
         print("Next steps:")
@@ -106,7 +106,7 @@ def main():
     except Exception as e:
         print()
         print("=" * 80)
-        print(f"✗ ÉTAPE 3 FAILED: {e}")
+        print(f"❌ ÉTAPE 3 FAILED: {e}")
         print("=" * 80)
         import traceback
 

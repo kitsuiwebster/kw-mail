@@ -28,7 +28,7 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "list_all_emails",
-            "description": "List ALL emails from last N days (range, not specific date). Use when user says: 'tous les mails', 'depuis lundi' (= range from Mon to today), 'dernière semaine'. Returns formatted string. DETERMINISTIC - ONE call only.",
+            "description": "List ALL emails from last N days (range, not specific date). Use when user says: 'tous les mails', 'depuis lundi' (= range from Mon to today), 'dernière semaine', 'les 5 derniers mails'. Returns formatted string. DETERMINISTIC - ONE call only.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -36,6 +36,11 @@ TOOL_DEFINITIONS = [
                         "type": "integer",
                         "description": "Days back: 1 (24h), 7 (week), 30 (month). 'depuis lundi' (Mon to today) = count days.",
                         "default": 1,
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Limit to N most recent emails. Use for 'les 5 derniers', 'les 10 derniers'. 0 = no limit (all). Default: 0",
+                        "default": 0,
                     }
                 },
                 "required": [],
