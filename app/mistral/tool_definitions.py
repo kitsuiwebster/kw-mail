@@ -101,6 +101,34 @@ TOOL_DEFINITIONS = [
     {
         "type": "function",
         "function": {
+            "name": "search_emails_by_address",
+            "description": "Search emails by sender email address. Use when user provides an email like 'noreply@newsletter.austrian.com' or asks for emails from that address. Returns: id, from, subject, date, preview.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "type": "string",
+                        "description": "Email address to search. Example: 'noreply@newsletter.austrian.com'.",
+                        "default": "",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Max results. Default: 10.",
+                        "default": 10,
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Days back: 1 (24h), 7 (week), 30 (month). Default: 1",
+                        "default": 1,
+                    },
+                },
+                "required": ["address"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_full_email",
             "description": "Get FULL body of ONE email. ONLY use if user explicitly asks: 'lis le 2', 'détails du 3', 'contenu complet', 'le 2e'. DO NOT use for listing emails. Requires email_id.",
             "parameters": {

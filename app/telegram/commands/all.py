@@ -5,7 +5,12 @@ from app.telegram.client import TelegramClient
 from app.telegram.commands._shared import send_in_chunks
 
 
-async def handle_all(command: str, chat_id: str, telegram_client: TelegramClient):
+async def handle_all(
+    command: str,
+    chat_id: str,
+    telegram_client: TelegramClient,
+    last_search_results: dict | None = None,
+):
     # Handle /all and /tous commands - list all emails
     try:
         parts = command.split()
@@ -26,6 +31,9 @@ async def handle_all(command: str, chat_id: str, telegram_client: TelegramClient
         if not emails:
             telegram_client.send_message("Aucun email trouvé", chat_id)
             return
+
+        if last_search_results is not None:
+            last_search_results[chat_id] = emails
 
         lines = [f"📌 {len(emails)} emails ({days}j):\n"]
 

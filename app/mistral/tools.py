@@ -31,6 +31,7 @@ def search_emails(query: str = "", max_results: int = 10, days: int = 1) -> List
                     "date": email["date"],
                     "cc": email.get("cc", ""),
                     "preview": body_preview,
+                    "folder": email.get("folder", ""),
                 }
             )
         logger.info(f"Search complete | matched={len(matching_emails)} | total={len(all_emails)}")
@@ -54,6 +55,63 @@ def search_emails(query: str = "", max_results: int = 10, days: int = 1) -> List
                     "date": email["date"],
                     "cc": email.get("cc", ""),
                     "preview": body_preview,
+                    "folder": email.get("folder", ""),
+                }
+            )
+
+            if len(matching_emails) >= max_results:
+                break
+
+    return matching_emails
+
+
+def _extract_email_address(from_field: str) -> str:
+    import re
+
+    if not from_field:
+        return ""
+
+    email_match = re.search(r"<(.+?)>", from_field)
+    if email_match:
+        return email_match.group(1).strip().lower()
+
+    email_pattern = re.search(r"[\w\.-]+@[\w\.-]+", from_field)
+    return email_pattern.group().strip().lower() if email_pattern else ""
+
+
+def search_emails_by_address(address: str = "", max_results: int = 10, days: int = 1) -> List[Dict]:
+    # Search emails by sender email address
+    imap_client = IMAPClient()
+    imap_client.connect()
+
+    all_emails = imap_client.get_emails_last_24h(days=days)
+    imap_client.disconnect()
+
+    if not all_emails:
+        return []
+
+    address = (address or "").strip().lower()
+    if not address:
+        return []
+
+    matching_emails = []
+    for email in all_emails:
+        from_field = email.get("from", "")
+        sender_addr = _extract_email_address(from_field)
+        if not sender_addr:
+            continue
+
+        if address in sender_addr or sender_addr in address or address in from_field.lower():
+            body_preview = email.get("body", "")[:100].strip()
+            matching_emails.append(
+                {
+                    "id": email["id"],
+                    "from": email["from"],
+                    "subject": email["subject"],
+                    "date": email["date"],
+                    "cc": email.get("cc", ""),
+                    "preview": body_preview,
+                    "folder": email.get("folder", ""),
                 }
             )
 
@@ -115,6 +173,7 @@ def list_emails_by_date(target_date: str, search_days: int = 7) -> str:
 
         lines.append(f"{idx}. {sender} - {subject} ({time_str})")
 
+    lines.append("\nPour lire un email: \"lis le X\" (ex: \"lis le 2\").")
     return "\n".join(lines)
 
 
@@ -154,6 +213,7 @@ def list_all_emails(days: int = 1, max_results: int = 0) -> str:
         subject = email.get("subject", "Sans sujet")[:45]
         lines.append(f"{idx}. {sender} - {subject} ({date_str})")
 
+    lines.append("\nPour lire un email: \"lis le X\" (ex: \"lis le 2\").")
     return "\n".join(lines)
 
 
@@ -226,6 +286,7 @@ def list_emails_last_hours(hours: int = 12, max_results: int = 0) -> str:
         subject = email.get("subject", "Sans sujet")[:45]
         lines.append(f"{idx}. {sender} - {subject} ({time_str})")
 
+    lines.append("\nPour lire un email: \"lis le X\" (ex: \"lis le 2\").")
     return "\n".join(lines)
 
 
@@ -249,6 +310,7 @@ TOOL_FUNCTIONS = {
     "list_all_emails": list_all_emails,
     "list_emails_last_hours": list_emails_last_hours,
     "search_emails": search_emails,
+    "search_emails_by_address": search_emails_by_address,
     "get_full_email": get_full_email,
 }
 

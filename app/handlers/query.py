@@ -7,8 +7,9 @@ from app.logger import logger
 from app.mistral.client import MistralClient
 from app.mistral.prompts import SYSTEM_PROMPT
 from app.mistral.tool_definitions import TOOL_DEFINITIONS
-from app.mistral.tools import execute_tool
+from app.mistral.tools import execute_tool, search_emails_by_address
 from app.telegram.client import TelegramClient
+from app.telegram.commands._shared import send_in_chunks
 from app.utils import remove_markdown
 
 
@@ -22,34 +23,135 @@ async def handle_query(
 ):
     # Handle user queries using Mistral with tool calling
     try:
+        def _split_text(text: str, chunk_size: int = 3500) -> list[str]:
+            if not text:
+                return []
+            return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+        def _send_email_list_with_prompt(
+            emails: list[dict],
+            header: str,
+            chat_id: str,
+        ):
+            lines = [header, ""]
+            for idx, email in enumerate(emails, 1):
+                from_full = email.get("from", "Unknown")
+                subject = email.get("subject", "Sans sujet")
+                date = email.get("date", "Unknown")
+                lines.append(f"{idx}. {from_full}")
+                lines.append(f"Sujet : {subject}")
+                lines.append(f"Date : {date}")
+                lines.append("")
+            send_in_chunks(telegram_client, chat_id, lines)
+
+        normalized_query = query.strip().lower()
+
+        # Direct email address search to avoid extra tool calls
+        email_match = re.search(r"[\w\.-]+@[\w\.-]+", normalized_query)
+        if email_match:
+            telegram_client.send_message("✨ Chargement...", chat_id)
+            address = email_match.group(0)
+            results = search_emails_by_address(address=address, max_results=10, days=7)
+            if results:
+                last_search_results[chat_id] = results
+                logger.info(f"Search by address (direct) | chat={chat_id} | count={len(results)}")
+                header = f"📌 {len(results)} email(s) trouvé(s) pour cette adresse :"
+                _send_email_list_with_prompt(results, header, chat_id)
+            else:
+                telegram_client.send_message("Aucun email trouvé pour cette adresse.", chat_id)
+            return
+
+        if normalized_query in {"oui", "ok", "okay", "vas-y", "oui vas-y", "lis", "lis-le", "lis le", "li le", "lire", "go"}:
+            if chat_id in last_search_results:
+                cached = last_search_results[chat_id]
+                if len(cached) == 1:
+                    email_id = cached[0].get("id")
+                    if email_id:
+                        imap_client = IMAPClient()
+                        imap_client.connect()
+                        full_email = None
+                        for days in (7, 30):
+                            full_email = None
+                            for email in imap_client.get_emails_last_24h(days=days):
+                                if email.get("id") == email_id:
+                                    full_email = email
+                                    break
+                            if full_email:
+                                break
+                        imap_client.disconnect()
+
+                        if full_email:
+                            from_full = full_email.get("from", "Unknown")
+                            subject = full_email.get("subject", "Sans sujet")
+                            date = full_email.get("date", "Unknown")
+                            cc = full_email.get("cc", "")
+                            folder = full_email.get("folder", "")
+                            body = (full_email.get("body", "") or "").strip()
+                            preview = body[:4000] + ("…" if len(body) > 4000 else "")
+
+                            lines = [
+                                "📨 Email",
+                                f"De: {from_full}",
+                                f"Sujet: {subject}",
+                                f"Date: {date}",
+                            ]
+                            if cc:
+                                lines.append(f"CC: {cc}")
+                            if folder:
+                                lines.append(f"Dossier: {folder}")
+                            if preview:
+                                lines.append("")
+                                lines.extend(_split_text(preview))
+
+                            send_in_chunks(telegram_client, chat_id, lines)
+                            return
+
+                        telegram_client.send_message(
+                            "Je n'ai pas pu récupérer le contenu. Dis-moi par exemple: \"lis le 1\".",
+                            chat_id,
+                        )
+                        return
+                elif len(cached) > 1:
+                    telegram_client.send_message(
+                        "Je peux le lire, mais indique le numéro (ex: \"lis le 2\").",
+                        chat_id,
+                    )
+                    return
+
         m = re.match(r"^\s*(?:c[' ]?quoi|cest\s*quoi|quoi|quel\s+est)?\s*(?:le|la)?\s*(\d{1,3})\s*\??\s*$", query.lower())
         if m and chat_id in last_search_results:
             idx = int(m.group(1)) - 1
             if 0 <= idx < len(last_search_results[chat_id]):
-                email = last_search_results[chat_id][idx]
-                from_full = email.get("from", "Unknown")
-                subject = email.get("subject", "Sans sujet")
-                date = email.get("date", "Unknown")
-                cc = email.get("cc", "")
-                folder = email.get("folder", "")
-                body = (email.get("body", "") or "").strip()
-                preview = body[:1200] + ("…" if len(body) > 1200 else "")
+                telegram_client.send_message("🌀 Chargement...", chat_id)
+                cached = last_search_results[chat_id][idx]
+                email_id = cached.get("id")
+                if not email_id:
+                    telegram_client.send_message("Email introuvable. Essaie un autre numéro.", chat_id)
+                    return
 
-                lines = [
-                    f"📨 Email #{idx+1}",
-                    f"De: {from_full}",
-                    f"Sujet: {subject}",
-                    f"Date: {date}",
-                ]
-                if cc:
-                    lines.append(f"CC: {cc}")
-                if folder:
-                    lines.append(f"Dossier: {folder}")
-                if preview:
-                    lines.append("")
-                    lines.append(preview)
+                imap_client = IMAPClient()
+                imap_client.connect()
+                full_email = None
+                for days in (7, 30):
+                    for email in imap_client.get_emails_last_24h(days=days):
+                        if email.get("id") == email_id:
+                            full_email = email
+                            break
+                    if full_email:
+                        break
+                imap_client.disconnect()
 
-                telegram_client.send_message("\n".join(lines), chat_id)
+                if not full_email:
+                    telegram_client.send_message("Je n'ai pas pu récupérer le contenu complet.", chat_id)
+                    return
+
+                summary = mistral_client.summarize_email(full_email)
+                reply_markup = {
+                    "inline_keyboard": [
+                        [{"text": "Body", "callback_data": f"body:{email_id}"}]
+                    ]
+                }
+                telegram_client.send_message(summary, chat_id, reply_markup=reply_markup)
                 return
 
         telegram_client.send_message("✨ Chargement...", chat_id)
@@ -95,6 +197,13 @@ async def handle_query(
             if tool_name == "search_emails" and result:
                 last_search_results[chat_id] = result
                 logger.info(f"Search results cached | chat={chat_id} | count={len(result)}")
+            if tool_name == "search_emails_by_address" and result:
+                last_search_results[chat_id] = result
+                logger.info(f"Search by address cached | chat={chat_id} | count={len(result)}")
+                list_tool_used["used"] = True
+                header = f"📌 {len(result)} email(s) trouvé(s) pour cette adresse :"
+                _send_email_list_with_prompt(result, header, chat_id)
+                return "✅ Liste envoyée"
 
             if tool_name == "list_all_emails" and isinstance(result, str):
                 imap_client_temp = IMAPClient()

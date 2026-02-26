@@ -28,7 +28,12 @@ class TelegramClient:
             return httpx.Client(transport=transport, timeout=self.timeout)
         return httpx.Client(timeout=self.timeout)
 
-    def send_message(self, text: str, chat_id: Optional[str] = None) -> dict:
+    def send_message(
+        self,
+        text: str,
+        chat_id: Optional[str] = None,
+        reply_markup: Optional[dict] = None,
+    ) -> dict:
         # Send a message to Telegram
         target_chat_id = chat_id or self.chat_id
 
@@ -36,11 +41,37 @@ class TelegramClient:
             "chat_id": target_chat_id,
             "text": text,
         }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
 
         with self._client() as client:
             response = client.post(
                 f"{self.api_url}/sendMessage",
                 json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def send_document(
+        self,
+        file_bytes: bytes,
+        filename: str,
+        chat_id: Optional[str] = None,
+        caption: Optional[str] = None,
+    ) -> dict:
+        # Send a document to Telegram
+        target_chat_id = chat_id or self.chat_id
+        data = {"chat_id": target_chat_id}
+        if caption:
+            data["caption"] = caption
+
+        files = {"document": (filename, file_bytes, "message/rfc822")}
+
+        with self._client() as client:
+            response = client.post(
+                f"{self.api_url}/sendDocument",
+                data=data,
+                files=files,
             )
             response.raise_for_status()
             return response.json()

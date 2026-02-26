@@ -104,6 +104,57 @@ class MistralClient:
 
         return data["choices"][0]["message"]["content"]
 
+    def summarize_email(self, email: Dict) -> str:
+        # Generate a short summary of a single email
+        if not email:
+            return "Email introuvable."
+
+        subject = email.get("subject", "Sans sujet")
+        from_addr = email.get("from", "Unknown")
+        date = email.get("date", "Unknown")
+        body = (email.get("body", "") or "").strip()
+        preview = body[:4000] + ("…" if len(body) > 4000 else "")
+
+        prompt = (
+            "Tu dois résumer UN email.\n\n"
+            f"Objet: {subject}\n"
+            f"De: {from_addr}\n"
+            f"Date: {date}\n"
+            f"Contenu:\n{preview}\n\n"
+            "Réponds exactement au format suivant:\n"
+            "Objet : <objet>\n\n"
+            "Résumé :\n"
+            "- <point 1>\n"
+            "- <point 2>\n"
+            "- <point 3>\n\n"
+            "Besoin d'un détail précis ?\n\n"
+            "Règles:\n"
+            "- Réponse en français\n"
+            "- 3 à 7 points max\n"
+            "- Pas de markdown sauf les tirets\n"
+            "- Pas de HTML\n"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+
+        with self._client() as client:
+            response = client.post(
+                self.api_url,
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return data["choices"][0]["message"]["content"]
+
     def classify_important_emails(self, emails: List[Dict], window_label: str = "12h") -> Dict:
         # Identify important emails and provide short explanations
         if not emails:

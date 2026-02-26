@@ -69,6 +69,22 @@ async def telegram_webhook(request: Request):
     try:
         data = await request.json()
 
+        if "callback_query" in data:
+            callback = data["callback_query"]
+            message = callback.get("message", {})
+            chat_id = str(message.get("chat", {}).get("id", ""))
+            user_id = str(callback.get("from", {}).get("id", ""))
+            data_str = callback.get("data", "")
+
+            if chat_id not in AUTHORIZED_CHAT_IDS and user_id not in AUTHORIZED_CHAT_IDS:
+                username = callback.get("from", {}).get("username", "unknown")
+                logger.warning(f"Unauthorized callback denied | user={username} | chat={chat_id}")
+                telegram_client.send_message("🚫 Accès non autorisé. Ce bot est privé.", chat_id)
+                return {"ok": True}
+
+            await handle_callback(data_str, chat_id)
+            return {"ok": True}
+
         if "message" not in data:
             return {"ok": True}
 
@@ -108,7 +124,7 @@ async def handle_command(command: str, chat_id: str):
     if command == "/today":
         await handle_today(chat_id, telegram_client, last_search_results)
     elif command.startswith("/all") or command.startswith("/tous"):
-        await handle_all(command, chat_id, telegram_client)
+        await handle_all(command, chat_id, telegram_client, last_search_results)
     elif command == "/summary":
         await handle_summary(chat_id, telegram_client, mistral_client)
     elif command == "/menu":
@@ -121,6 +137,55 @@ async def handle_command(command: str, chat_id: str):
         await handle_reset(chat_id, telegram_client, conversation_history)
     else:
         await handle_unknown_command(command, chat_id, telegram_client)
+
+
+async def handle_callback(data_str: str, chat_id: str):
+    # Handle inline button callbacks
+    if data_str.startswith("body:") or data_str.startswith("eml:"):
+        action, email_id = data_str.split(":", 1)
+        if not email_id:
+            telegram_client.send_message("Email introuvable.", chat_id)
+            return
+
+        telegram_client.send_message("🌀 Chargement...", chat_id)
+
+        from app.email.imap_client import IMAPClient
+        from app.telegram.commands._shared import send_in_chunks
+
+        folder = None
+        cached = last_search_results.get(chat_id, [])
+        for email in cached:
+            if email.get("id") == email_id:
+                folder = email.get("folder")
+                break
+
+        imap_client = IMAPClient()
+        imap_client.connect()
+        raw_email = imap_client.get_email_raw_by_id(email_id, folder=folder)
+        imap_client.disconnect()
+
+        if not raw_email:
+            telegram_client.send_message("Je n'ai pas pu récupérer le contenu.", chat_id)
+            return
+
+        if action == "eml":
+            filename = f"email-{email_id}.eml"
+            telegram_client.send_document(raw_email, filename, chat_id)
+            return
+
+        # action == "body"
+        from email import policy
+        from email.parser import BytesParser
+        msg = BytesParser(policy=policy.default).parsebytes(raw_email)
+        body = IMAPClient()._extract_body(msg)
+        if not body:
+            telegram_client.send_message("Email vide.", chat_id)
+            return
+
+        lines = ["📨 Body", ""]
+        for chunk in [body[i : i + 3500] for i in range(0, len(body), 3500)]:
+            lines.append(chunk)
+        send_in_chunks(telegram_client, chat_id, lines)
 
 
 @app.get("/webhook/info")
