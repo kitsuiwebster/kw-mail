@@ -173,7 +173,6 @@ def list_emails_by_date(target_date: str, search_days: int = 7) -> str:
 
         lines.append(f"{idx}. {sender} - {subject} ({time_str})")
 
-    lines.append("\nPour lire un email: \"lis le X\" (ex: \"lis le 2\").")
     return "\n".join(lines)
 
 
@@ -213,7 +212,6 @@ def list_all_emails(days: int = 1, max_results: int = 0) -> str:
         subject = email.get("subject", "Sans sujet")[:45]
         lines.append(f"{idx}. {sender} - {subject} ({date_str})")
 
-    lines.append("\nPour lire un email: \"lis le X\" (ex: \"lis le 2\").")
     return "\n".join(lines)
 
 
@@ -286,7 +284,6 @@ def list_emails_last_hours(hours: int = 12, max_results: int = 0) -> str:
         subject = email.get("subject", "Sans sujet")[:45]
         lines.append(f"{idx}. {sender} - {subject} ({time_str})")
 
-    lines.append("\nPour lire un email: \"lis le X\" (ex: \"lis le 2\").")
     return "\n".join(lines)
 
 
